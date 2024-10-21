@@ -1,0 +1,1 @@
+RANGE_DICT_PATH='../info/range_dict.json'

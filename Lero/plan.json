@@ -1,0 +1,206 @@
+[
+    {
+        "Plan": {
+            "Node Type": "Aggregate",
+            "Strategy": "Plain",
+            "Partial Mode": "Simple",
+            "Parallel Aware": false,
+            "Startup Cost": 5163.84,
+            "Total Cost": 5163.85,
+            "Plan Rows": 1,
+            "Plan Width": 8,
+            "Actual Startup Time": 428.315,
+            "Actual Total Time": 428.318,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+                "count(*)"
+            ],
+            "Plans": [
+                {
+                    "Node Type": "Nested Loop",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Join Type": "Inner",
+                    "Startup Cost": 1.27,
+                    "Total Cost": 5162.2,
+                    "Plan Rows": 657,
+                    "Plan Width": 0,
+                    "Actual Startup Time": 0.03,
+                    "Actual Total Time": 400.275,
+                    "Actual Rows": 714567,
+                    "Actual Loops": 1,
+                    "Inner Unique": false,
+                    "Join Filter": "(c.postid = ph.postid)",
+                    "Rows Removed by Join Filter": 0,
+                    "Plans": [
+                        {
+                            "Node Type": "Nested Loop",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Join Type": "Inner",
+                            "Startup Cost": 0.84,
+                            "Total Cost": 4241.26,
+                            "Plan Rows": 1520,
+                            "Plan Width": 12,
+                            "Actual Startup Time": 0.023,
+                            "Actual Total Time": 67.534,
+                            "Actual Rows": 114167,
+                            "Actual Loops": 1,
+                            "Output": [
+                                "v.postid",
+                                "p.id",
+                                "c.postid"
+                            ],
+                            "Inner Unique": false,
+                            "Plans": [
+                                {
+                                    "Node Type": "Nested Loop",
+                                    "Parent Relationship": "Outer",
+                                    "Parallel Aware": false,
+                                    "Join Type": "Inner",
+                                    "Startup Cost": 0.42,
+                                    "Total Cost": 3931.84,
+                                    "Plan Rows": 428,
+                                    "Plan Width": 8,
+                                    "Actual Startup Time": 0.016,
+                                    "Actual Total Time": 15.867,
+                                    "Actual Rows": 3635,
+                                    "Actual Loops": 1,
+                                    "Output": [
+                                        "p.id",
+                                        "c.postid"
+                                    ],
+                                    "Inner Unique": false,
+                                    "Plans": [
+                                        {
+                                            "Node Type": "Seq Scan",
+                                            "Parent Relationship": "Outer",
+                                            "Parallel Aware": false,
+                                            "Relation Name": "posts",
+                                            "Schema": "public",
+                                            "Alias": "p",
+                                            "Startup Cost": 0.0,
+                                            "Total Cost": 2189.64,
+                                            "Plan Rows": 227,
+                                            "Plan Width": 4,
+                                            "Actual Startup Time": 0.008,
+                                            "Actual Total Time": 10.005,
+                                            "Actual Rows": 1235,
+                                            "Actual Loops": 1,
+                                            "Output": [
+                                                "p.id",
+                                                "p.posttypeid",
+                                                "p.creationdate",
+                                                "p.score",
+                                                "p.viewcount",
+                                                "p.owneruserid",
+                                                "p.answercount",
+                                                "p.commentcount",
+                                                "p.favoritecount",
+                                                "p.lasteditoruserid"
+                                            ],
+                                            "Filter": "((p.favoritecount <> 22) AND (p.answercount > 3))",
+                                            "Rows Removed by Filter": 90741
+                                        },
+                                        {
+                                            "Node Type": "Index Scan",
+                                            "Parent Relationship": "Inner",
+                                            "Parallel Aware": false,
+                                            "Scan Direction": "Forward",
+                                            "Index Name": "idx_comments_postid",
+                                            "Relation Name": "comments",
+                                            "Schema": "public",
+                                            "Alias": "c",
+                                            "Startup Cost": 0.42,
+                                            "Total Cost": 7.63,
+                                            "Plan Rows": 4,
+                                            "Plan Width": 4,
+                                            "Actual Startup Time": 0.003,
+                                            "Actual Total Time": 0.004,
+                                            "Actual Rows": 3,
+                                            "Actual Loops": 1235,
+                                            "Output": [
+                                                "c.id",
+                                                "c.postid",
+                                                "c.score",
+                                                "c.creationdate",
+                                                "c.userid"
+                                            ],
+                                            "Index Cond": "(c.postid = p.id)",
+                                            "Rows Removed by Index Recheck": 0,
+                                            "Filter": "((c.score < 87) AND (c.creationdate <> 1408027181))",
+                                            "Rows Removed by Filter": 0
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Node Type": "Index Scan",
+                                    "Parent Relationship": "Inner",
+                                    "Parallel Aware": false,
+                                    "Scan Direction": "Forward",
+                                    "Index Name": "idx_votes_postid",
+                                    "Relation Name": "votes",
+                                    "Schema": "public",
+                                    "Alias": "v",
+                                    "Startup Cost": 0.42,
+                                    "Total Cost": 0.64,
+                                    "Plan Rows": 8,
+                                    "Plan Width": 4,
+                                    "Actual Startup Time": 0.002,
+                                    "Actual Total Time": 0.012,
+                                    "Actual Rows": 31,
+                                    "Actual Loops": 3635,
+                                    "Output": [
+                                        "v.id",
+                                        "v.postid",
+                                        "v.votetypeid",
+                                        "v.creationdate",
+                                        "v.userid",
+                                        "v.bountyamount"
+                                    ],
+                                    "Index Cond": "(v.postid = c.postid)",
+                                    "Rows Removed by Index Recheck": 0,
+                                    "Filter": "(v.creationdate <> 1371376921)",
+                                    "Rows Removed by Filter": 0
+                                }
+                            ]
+                        },
+                        {
+                            "Node Type": "Index Scan",
+                            "Parent Relationship": "Inner",
+                            "Parallel Aware": false,
+                            "Scan Direction": "Forward",
+                            "Index Name": "idx_posthistory_postid",
+                            "Relation Name": "posthistory",
+                            "Schema": "public",
+                            "Alias": "ph",
+                            "Startup Cost": 0.42,
+                            "Total Cost": 0.56,
+                            "Plan Rows": 4,
+                            "Plan Width": 4,
+                            "Actual Startup Time": 0.001,
+                            "Actual Total Time": 0.002,
+                            "Actual Rows": 6,
+                            "Actual Loops": 114167,
+                            "Output": [
+                                "ph.id",
+                                "ph.posthistorytypeid",
+                                "ph.postid",
+                                "ph.creationdate",
+                                "ph.userid"
+                            ],
+                            "Index Cond": "(ph.postid = v.postid)",
+                            "Rows Removed by Index Recheck": 0,
+                            "Filter": "(ph.posthistorytypeid < 16)",
+                            "Rows Removed by Filter": 2
+                        }
+                    ]
+                }
+            ]
+        },
+        "Planning Time": 1.31,
+        "Triggers": [],
+        "Execution Time": 428.414
+    }
+]
