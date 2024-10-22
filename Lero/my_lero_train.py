@@ -358,55 +358,9 @@ def test(model_path, plan_path, output_path):
     with open(output_path, 'w') as f:
         json.dump(lero_dict, f, indent=4)
 
-def test_LeroModel(model_path, plan_path, output_path):
-    lero_model = load_model(model_path)
-    plans_list = load_plans(plan_path)
-    
-    correct_count = 0
-    total_count = 0
-    sum = 0.0
-    for plans in plans_list:
-               
-        n = len(plans)
-        score_matrix = np.zeros(n)
-        
-        i, j = 0, 0
-        while i < n - 1:
-            s1 = plans[i]
-            j = i + 1
-            while j < n:
-                s2 = plans[j]
-                x1, y1 = lero_model._feature_generator.transform([s1])
-                x2, y2 = lero_model._feature_generator.transform([s2])
-                prob1 = lero_model.predict(x1)
-                prob2 = lero_model.predict(x2)
-
-                true_label = 1 if y1[0] >= y2[0] else 0
-                prob_label = 1 if prob1[0] >= prob2[0] else 0                
-                
-                correct_count += 1 if true_label == prob_label or y1[0] == y2[0] else 0
-                total_count += 1
-                
-                if prob_label == 1:
-                    score_matrix[j] += 1
-                else:
-                    score_matrix[i] += 1
-                
-                j += 1
-                i += 1
-        
-        selected_plan_index = np.argmax(score_matrix)
-        sum += json.loads(plans[selected_plan_index])[0]['Execution Time']/1000
-        
-    bayesian_dict = {}
-    bayesian_dict['sum'] = sum / 60.0 / 60.0
-    bayesian_dict['accuracy'] = 1.0*correct_count/total_count    
-    
-    with open(output_path, 'w') as f:
-        json.dump(bayesian_dict, f, indent=4) 
-
-# def test_LeroModel(model_path, plans_list, output_path):
+# def test_LeroModel(model_path, plan_path, output_path):
 #     lero_model = load_model(model_path)
+#     plans_list = load_plans(plan_path)
     
 #     correct_count = 0
 #     total_count = 0
@@ -449,7 +403,53 @@ def test_LeroModel(model_path, plan_path, output_path):
 #     bayesian_dict['accuracy'] = 1.0*correct_count/total_count    
     
 #     with open(output_path, 'w') as f:
-#         json.dump(bayesian_dict, f, indent=4)
+#         json.dump(bayesian_dict, f, indent=4) 
+
+def test_LeroModel(model_path, plans_list, output_path):
+    lero_model = load_model(model_path)
+    
+    correct_count = 0
+    total_count = 0
+    sum = 0.0
+    for plans in plans_list:
+               
+        n = len(plans)
+        score_matrix = np.zeros(n)
+        
+        i, j = 0, 0
+        while i < n - 1:
+            s1 = plans[i]
+            j = i + 1
+            while j < n:
+                s2 = plans[j]
+                x1, y1 = lero_model._feature_generator.transform([s1])
+                x2, y2 = lero_model._feature_generator.transform([s2])
+                prob1 = lero_model.predict(x1)
+                prob2 = lero_model.predict(x2)
+
+                true_label = 1 if y1[0] >= y2[0] else 0
+                prob_label = 1 if prob1[0] >= prob2[0] else 0                
+                
+                correct_count += 1 if true_label == prob_label or y1[0] == y2[0] else 0
+                total_count += 1
+                
+                if prob_label == 1:
+                    score_matrix[j] += 1
+                else:
+                    score_matrix[i] += 1
+                
+                j += 1
+                i += 1
+        
+        selected_plan_index = np.argmax(score_matrix)
+        sum += json.loads(plans[selected_plan_index])[0]['Execution Time']/1000
+        
+    bayesian_dict = {}
+    bayesian_dict['sum'] = sum / 60.0 / 60.0
+    bayesian_dict['accuracy'] = 1.0*correct_count/total_count    
+    
+    with open(output_path, 'w') as f:
+        json.dump(bayesian_dict, f, indent=4)
 
 def standardize_and_normalize(U, L):
     """
@@ -799,8 +799,8 @@ def compare_Bayesian_performance():
 # 数据集测试
 def test_dataset():
     dataset_path='../data/my_merged_stats_train_pool_plan.txt'
-    model_path_list= [ f'../model/exp4/model_{i}'for i in range(5)]
-    model_test_output_path_list = [ f'../result/exp4/model_{i}_test_output.json' for i in range(5)]
+    model_path_list= [ f'../model/exp4/filter_model/model_{i}'for i in range(5)]
+    model_test_output_path_list = [ f'../result/exp4/filter_model/model_{i}_test_output.json' for i in range(5)]
     
     
     plans = load_plans(dataset_path)    
@@ -813,10 +813,10 @@ def test_dataset():
                         plans[:int(count*0.7)] ,
                         plans[:int(count*0.9)] ]
     test_plans = plans[int(count * 0.9):]
-    for plans in train_plans_list:
-        print(len(plans))
+    # for plans in train_plans_list:
+    #     print(len(plans))
     
-    print(len(test_plans)) 
+    # print(len(test_plans)) 
     
     # for i in range(5):
     #     X1, X2 = [], []
@@ -827,8 +827,8 @@ def test_dataset():
             
     #     training_pairwise(X1, X2, None, model_path_list[i])
 
-    # for i in range(5):
-    #     test_LeroModel(model_path_list[i], plans_list=test_plans, output_path=model_test_output_path_list[i])
+    for i in range(5):
+        test_LeroModel(model_path_list[i], plans_list=test_plans, output_path=model_test_output_path_list[i])
 
 if __name__ == '__main__':
     logger = logging.getLogger('my_logger')
@@ -837,10 +837,10 @@ if __name__ == '__main__':
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
-    compare_random_and_coreset_ferformance()
+    # compare_random_and_coreset_ferformance()
     # compare_latency_filtering_performance()
     # compare_Bayesian_performance()
-    # test_dataset()
+    test_dataset()
     
     file_handler.close()
         
