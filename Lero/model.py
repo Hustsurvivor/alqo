@@ -292,12 +292,18 @@ class LeroNet(nn.Module):
         self.device = None
 
         self.tree_conv = nn.Sequential(
-            BinaryTreeConv(self.input_feature_dim, 256),
+            BinaryTreeConv(self.input_feature_dim, 512),
             TreeLayerNorm(),
             TreeActivation(nn.LeakyReLU()),
+            
+            BinaryTreeConv(512, 256),
+            TreeLayerNorm(),
+            TreeActivation(nn.LeakyReLU()),
+            
             BinaryTreeConv(256, 128),
             TreeLayerNorm(),
             TreeActivation(nn.LeakyReLU()),
+            
             BinaryTreeConv(128, 64),
             TreeLayerNorm(),
             DynamicPooling(),
@@ -306,9 +312,9 @@ class LeroNet(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(64, 32),
             nn.LeakyReLU(),
+            nn.Dropout(0.5),
             nn.Linear(32, 1)
         )
-
 
     def forward(self, trees):
         inter_fea = self.tree_conv(trees)
