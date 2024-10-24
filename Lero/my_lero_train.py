@@ -8,6 +8,9 @@ import os
 import time
 import pickle
 from sklearn.cluster import KMeans
+from sample_labeled_data import create_imbalanced_sql_subset
+from encode_sql import sql_coreset
+from ImportantConfig import RANGE_DICT_PATH
 
 np.random.seed(42)
 #################################### utils  ###################################
@@ -798,9 +801,9 @@ def compare_Bayesian_performance():
 
 # 数据集测试
 def test_dataset():
-    dataset_path='../data/my_merged_stats_train_pool_plan.txt'
-    model_path_list= [ f'../model/exp4/filter_model/model_{i}'for i in range(5)]
-    model_test_output_path_list = [ f'../result/exp4/filter_model/model_{i}_test_output.json' for i in range(5)]
+    dataset_path='../data/my_proc_merged_stats_train_pool_plan.txt'
+    model_path_list= [ f'../model/exp4/filter_model_modified/model_{i}'for i in range(5)]
+    model_test_output_path_list = [ f'../result/exp4/filter_model_modified/model_{i}_test_output.json' for i in range(5)]
     
     
     plans = load_plans(dataset_path)    
@@ -813,8 +816,8 @@ def test_dataset():
                         plans[:int(count*0.7)] ,
                         plans[:int(count*0.9)] ]
     test_plans = plans[int(count * 0.9):]
-    # for plans in train_plans_list:
-    #     print(len(plans))
+    for plans in train_plans_list:
+        print(len(plans))
     
     # print(len(test_plans)) 
     
@@ -827,9 +830,44 @@ def test_dataset():
             
     #     training_pairwise(X1, X2, None, model_path_list[i])
 
-    for i in range(5):
-        test_LeroModel(model_path_list[i], plans_list=test_plans, output_path=model_test_output_path_list[i])
+    # for i in range(5):
+    #     test_LeroModel(model_path_list[i], plans_list=test_plans, output_path=model_test_output_path_list[i])
 
+# 不平衡数据集测试
+def compare_imbalanced_data_performance():
+    """
+    直接在12000条里用d分布挑选6000条作为pool
+    然后在6000条里用聚类挑选核心集，设置不同核心集数量，观察效果  
+    不用预训练了，也不用挑labeled data
+    """
+    ## 参数设置
+    train_sql_path=f'../data/train_stats_sql.txt'
+    train_plan_path=f'../data/train_stats_plan.txt'
+    
+    test_sql_path=f'../data/test_stats_sql.txt'
+    test_plan_path=f'../data/test_stats_plan.txt'
+    
+    
+    ## 从train_sql中用d分布挑选6000条作为pool
+    with open(train_sql_path, 'r') as f:
+        lines = f.readlines()
+    sql_queries = [line.split('#####')[1].strip() for line in lines]
+    sql_qids = [int(line.split('#####')[0].strip()) for line in lines]
+    
+    # total_samples = 6000
+    # alpha=0.2
+    # imbalanced_sql_subset, sampled_sql_indices = create_imbalanced_sql_subset(sql_queries, alpha, total_samples)
+    # imbalanced_sql_subset_qid = [sql_qids[sql_indice] for sql_indice in sampled_sql_indices]
+    # np.save('../data/tmp/imbalanced_sql_subset.npy', imbalanced_sql_subset)
+    # np.save('../data/tmp/imbalanced_sql_subset_qid.npy', imbalanced_sql_subset_qid)
+    
+    
+    imbalanced_sql_subset = np.load('../data/tmp/imbalanced_sql_subset.npy')
+    imbalanced_sql_subset_qid = np.load('../data/tmp/imbalanced_sql_subset_qid.npy')
+    
+    sql_coreset(imbalanced_sql_subset, RANGE_DICT_PATH)
+    
+    
 if __name__ == '__main__':
     logger = logging.getLogger('my_logger')
     file_handler = logging.FileHandler('logfile.log')
@@ -840,7 +878,8 @@ if __name__ == '__main__':
     # compare_random_and_coreset_ferformance()
     # compare_latency_filtering_performance()
     # compare_Bayesian_performance()
-    test_dataset()
+    # test_dataset()
+    compare_imbalanced_data_performance()
     
     file_handler.close()
         

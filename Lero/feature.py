@@ -84,10 +84,6 @@ class FeatureGenerator():
                 # base table
                 input_relations.add(n["Relation Name"])
             
-            # 编码连接条件
-            # if "Index Cond" in n:
-            #     conditions = extract_conditions(n["Index Cond"])
-            #     join_filters.update(conditions)
             if "Join Filter" in n or "Index Cond" in n:
                 filter_str =  n["Join Filter"] if "Join Filter" in n else n["Index Cond"]
                 
@@ -321,7 +317,7 @@ class AnalyzeJsonParser(FeatureParser):
         if 'Actual Total Time' in json_rel:
             total_time = float(json_rel['Actual Total Time'])
 
-        ### todo:增加filter编码
+        ### 增加filter编码
         join_filters = []
         if "Join Filter" in json_rel or "Index Cond" in json_rel:
                 filter_str =  json_rel["Join Filter"] if "Join Filter" in json_rel else json_rel["Index Cond"]
@@ -334,11 +330,6 @@ class AnalyzeJsonParser(FeatureParser):
                         join_filters.append(fields[0]+' '+parts[1]+' '+fields[1])
                     else:
                         join_filters.append(condition)
-        
-        # if 'Index Cond' in json_rel:
-        #     join_filters.extend(extract_conditions(json_rel['Index Cond']))
-        # if 'Join Filter' in json_rel:
-        #     join_filters.extend(extract_conditions(json_rel['Join Cond']))
         
         filters = []
         if 'Filter' in json_rel:
@@ -408,7 +399,7 @@ class AnalyzeJsonParser(FeatureParser):
                     encode_index = field_index * base + op_index
                     encode_arr[encode_index] += 1
                     value_index = field_index * base + base - 1
-                    encode_arr[value_index] = value # todo：对value进行最大最小值标准化
+                    encode_arr[value_index] = value 
                 
                 # todo: 处理没见过的op
             else:

@@ -148,12 +148,13 @@ class LeroModel():
                 self._net = self._net.cuda(device)
 
         optimizer = None
-        optimizer = torch.optim.Adam(self._net.parameters())
-
+        optimizer = torch.optim.Adam(self._net.parameters(), lr=1e-3,weight_decay=1e-4)
+        epochs = 130
+        
         loss_fn = torch.nn.MSELoss()
         losses = []
         start_time = time()
-        for epoch in range(100):
+        for epoch in range(epochs):
             loss_accum = 0
             for x, y in dataset:
                 if CUDA:
