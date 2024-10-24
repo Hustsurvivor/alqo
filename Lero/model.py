@@ -229,8 +229,10 @@ class LeroModelPairWise(LeroModel):
                              collate_fn=collate_pairwise_fn)
 
         optimizer = None
-        optimizer = torch.optim.Adam(self._net.parameters())
-
+        optimizer = torch.optim.Adam(self._net.parameters(), lr=5e-3, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=90, gamma=0.1)
+        epochs = 120
+        
         bce_loss_fn = torch.nn.BCELoss()
 
         losses = []
@@ -238,7 +240,7 @@ class LeroModelPairWise(LeroModel):
         start_time = time()
         with open(str(int(start_time))+'_loss.txt','a') as f:
             f.write(f"train LeroModelPairWise\n")
-        for epoch in range(100):
+        for epoch in range(epochs):
             loss_accum = 0
             for x1, x2, label in dataset:
                 
@@ -266,6 +268,7 @@ class LeroModelPairWise(LeroModel):
             loss_accum /= len(dataset)
             losses.append(loss_accum)
 
+            scheduler.step()
             print("Epoch", epoch, "training loss:", loss_accum)
             
             with open(str(int(start_time))+'_loss.txt','a') as f:

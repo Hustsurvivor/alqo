@@ -9,7 +9,7 @@ import time
 import pickle
 from sklearn.cluster import KMeans
 from sample_labeled_data import create_imbalanced_sql_subset
-from encode_sql import sql_coreset
+from encode_sql import sql_KMedoids
 from ImportantConfig import RANGE_DICT_PATH
 
 np.random.seed(42)
@@ -361,55 +361,9 @@ def test(model_path, plan_path, output_path):
     with open(output_path, 'w') as f:
         json.dump(lero_dict, f, indent=4)
 
-# def test_LeroModel(model_path, plan_path, output_path):
-#     lero_model = load_model(model_path)
-#     plans_list = load_plans(plan_path)
-    
-#     correct_count = 0
-#     total_count = 0
-#     sum = 0.0
-#     for plans in plans_list:
-               
-#         n = len(plans)
-#         score_matrix = np.zeros(n)
-        
-#         i, j = 0, 0
-#         while i < n - 1:
-#             s1 = plans[i]
-#             j = i + 1
-#             while j < n:
-#                 s2 = plans[j]
-#                 x1, y1 = lero_model._feature_generator.transform([s1])
-#                 x2, y2 = lero_model._feature_generator.transform([s2])
-#                 prob1 = lero_model.predict(x1)
-#                 prob2 = lero_model.predict(x2)
-
-#                 true_label = 1 if y1[0] >= y2[0] else 0
-#                 prob_label = 1 if prob1[0] >= prob2[0] else 0                
-                
-#                 correct_count += 1 if true_label == prob_label or y1[0] == y2[0] else 0
-#                 total_count += 1
-                
-#                 if prob_label == 1:
-#                     score_matrix[j] += 1
-#                 else:
-#                     score_matrix[i] += 1
-                
-#                 j += 1
-#                 i += 1
-        
-#         selected_plan_index = np.argmax(score_matrix)
-#         sum += json.loads(plans[selected_plan_index])[0]['Execution Time']/1000
-        
-#     bayesian_dict = {}
-#     bayesian_dict['sum'] = sum / 60.0 / 60.0
-#     bayesian_dict['accuracy'] = 1.0*correct_count/total_count    
-    
-#     with open(output_path, 'w') as f:
-#         json.dump(bayesian_dict, f, indent=4) 
-
-def test_LeroModel(model_path, plans_list, output_path):
+def test_LeroModel(model_path, plan_path, output_path):
     lero_model = load_model(model_path)
+    plans_list = load_plans(plan_path)
     
     correct_count = 0
     total_count = 0
@@ -452,7 +406,53 @@ def test_LeroModel(model_path, plans_list, output_path):
     bayesian_dict['accuracy'] = 1.0*correct_count/total_count    
     
     with open(output_path, 'w') as f:
-        json.dump(bayesian_dict, f, indent=4)
+        json.dump(bayesian_dict, f, indent=4) 
+
+# def test_LeroModel(model_path, plans_list, output_path):
+#     lero_model = load_model(model_path)
+    
+#     correct_count = 0
+#     total_count = 0
+#     sum = 0.0
+#     for plans in plans_list:
+               
+#         n = len(plans)
+#         score_matrix = np.zeros(n)
+        
+#         i, j = 0, 0
+#         while i < n - 1:
+#             s1 = plans[i]
+#             j = i + 1
+#             while j < n:
+#                 s2 = plans[j]
+#                 x1, y1 = lero_model._feature_generator.transform([s1])
+#                 x2, y2 = lero_model._feature_generator.transform([s2])
+#                 prob1 = lero_model.predict(x1)
+#                 prob2 = lero_model.predict(x2)
+
+#                 true_label = 1 if y1[0] >= y2[0] else 0
+#                 prob_label = 1 if prob1[0] >= prob2[0] else 0                
+                
+#                 correct_count += 1 if true_label == prob_label or y1[0] == y2[0] else 0
+#                 total_count += 1
+                
+#                 if prob_label == 1:
+#                     score_matrix[j] += 1
+#                 else:
+#                     score_matrix[i] += 1
+                
+#                 j += 1
+#                 i += 1
+        
+#         selected_plan_index = np.argmax(score_matrix)
+#         sum += json.loads(plans[selected_plan_index])[0]['Execution Time']/1000
+        
+#     bayesian_dict = {}
+#     bayesian_dict['sum'] = sum / 60.0 / 60.0
+#     bayesian_dict['accuracy'] = 1.0*correct_count/total_count    
+    
+#     with open(output_path, 'w') as f:
+#         json.dump(bayesian_dict, f, indent=4)
 
 def standardize_and_normalize(U, L):
     """
@@ -564,7 +564,53 @@ def coreset_kmeans_version(L, U, D, num_groups=32, n_selections_per_group=100):
         selected_samples.extend(global_selected_indices)
     
     return selected_samples, U_groups_indices
-        
+
+def coreset_KMedoids_version(sql_queries, num_groups=5 ,n_selections_per_group=100):
+    """
+    Arguments
+    ---------
+    sql_queries: 待聚类的sql语句
+    num_groups: 簇的数量
+    n_selections_per_group: 每一簇中sql的数量
+    
+    Returns
+    -------
+    得到的核心集的全局索引
+    
+    """
+    
+    t1 = time.time()
+    U_groups_indices, sql_encodings = sql_KMedoids(sql_queries, RANGE_DICT_PATH, num_groups)
+    t2 = time.time()
+    print(f'kmedoids time: {t2-t1}')
+    
+    U_groups_ts = []
+    for indices in U_groups_indices:
+        group = [sql_encodings[indice] for indice in indices]
+        U_groups_ts.append(torch.tensor(group))
+    
+    t3 = time.time()
+    selected_indices_per_group = greedy_core_set_selection_without_L(U_groups_ts, n_selections_per_group)
+    t4 = time.time()
+    print(f'coreset time:{t4-t3}')
+
+    selected_samples = []
+    for group_idx, (group_indices, selected_indices) in enumerate(zip(U_groups_indices, selected_indices_per_group)):
+        global_selected_indices = [group_indices[idx] for idx in selected_indices]
+        print(f"组 {group_idx} 中选出的样本全局索引：", global_selected_indices)
+        selected_samples.extend(global_selected_indices)
+    
+    return selected_samples
+
+def get_plan_from_qid(plan_path, qid_list):
+    plans_list = []
+    with open(plan_path, 'r') as f:
+        for line in f.readlines():
+            arr = line.strip().split('#####')
+            if int(arr[0].strip()) in qid_list:
+                plans_list.append(arr[1:])
+    
+    return plans_list 
 #####################################################################################
 
 
@@ -847,8 +893,14 @@ def compare_imbalanced_data_performance():
     test_sql_path=f'../data/test_stats_sql.txt'
     test_plan_path=f'../data/test_stats_plan.txt'
     
+    signal=4
+    coreset_model_path=f'../model/exp5/{signal}/coreset_model'
+    random_model_path_list=[ f'../model/exp5/{signal}/random_model_{i}' for i in range(5)]
     
-    ## 从train_sql中用d分布挑选6000条作为pool
+    coreset_output_path=f'../result/exp5/{signal}/coreset_model.json'
+    random_output_path_list=[f'../result/exp5/{signal}/random_model_{i}.json' for i in range(5)]
+    
+    # 从train_sql中用d分布挑选6000条作为pool
     with open(train_sql_path, 'r') as f:
         lines = f.readlines()
     sql_queries = [line.split('#####')[1].strip() for line in lines]
@@ -865,8 +917,43 @@ def compare_imbalanced_data_performance():
     imbalanced_sql_subset = np.load('../data/tmp/imbalanced_sql_subset.npy')
     imbalanced_sql_subset_qid = np.load('../data/tmp/imbalanced_sql_subset_qid.npy')
     
-    sql_coreset(imbalanced_sql_subset, RANGE_DICT_PATH)
+    selected_samples = coreset_KMedoids_version(imbalanced_sql_subset, num_groups=36, n_selections_per_group=24)
     
+    print(len(selected_samples))
+
+    ## 由query找到对应的qid
+    selected_samples_qids = [imbalanced_sql_subset_qid[indice] for indice in selected_samples]
+    
+    ## 由qid找到对应的plan
+    # selected_samples_qids中可能有重复值，在get_plan_from_qid时，将自动去重
+    coreset_plans_list = get_plan_from_qid(train_plan_path, selected_samples_qids)
+    
+    ## 构建plan_pair
+    X1_coreset, X2_coreset = [], []
+    for plans in coreset_plans_list:
+        x1, x2 = get_training_pair(plans)
+        X1_coreset.extend(x1)
+        X2_coreset.extend(x2)
+    
+    ## 训练模型
+    training_pairwise(X1_coreset, X2_coreset, None, coreset_model_path)
+    test_LeroModel(coreset_model_path, test_plan_path, coreset_output_path)
+    
+    for i in range(5):
+        random_samples_qids = random.choices(imbalanced_sql_subset_qid, k=len(selected_samples))
+        random_plans_list = get_plan_from_qid(train_plan_path, random_samples_qids)
+        X1_random, X2_random = [], []
+        for plans in random_plans_list:
+            x1, x2 = get_training_pair(plans)
+            X1_random.extend(x1)
+            X2_random.extend(x2)
+        training_pairwise(X1_random, X2_random, None, random_model_path_list[i])
+        test_LeroModel(random_model_path_list[i], test_plan_path, random_output_path_list[i])
+    
+    ## 测试模型
+    # test_LeroModel(coreset_model_path, test_plan_path, coreset_output_path)
+    # for i in range(5):
+    #     test_LeroModel(random_model_path_list[i], test_plan_path, random_output_path_list[i])
     
 if __name__ == '__main__':
     logger = logging.getLogger('my_logger')

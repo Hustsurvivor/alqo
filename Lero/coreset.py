@@ -103,7 +103,38 @@ def greedy_core_set_selection(L, U_groups, n_selections_per_group):
 
     return selected_indices_per_group
 
-def coreset(U, L, num_groups, n_selections_per_group, ):
+def greedy_core_set_selection_without_L(U_groups, n_selections_per_group):
+    selected_indices_per_group = []
+
+    for group_idx, U in enumerate(U_groups):
+        if len(U) == 0:
+            selected_indices_per_group.append([])
+            continue
+        selected_indices = []
+        selected_vectors = []
+
+        candidate_indices = torch.arange(U.size(0))
+        # max_sim = max_sim_L_list[group_idx].clone()
+
+        max_sim = torch.ones(U.size(0),1).squeeze(1)
+        for _ in range(min(n_selections_per_group, U.size(0))):
+            min_max_sim, min_idx = torch.min(max_sim[candidate_indices], dim=0)
+            selected_idx = candidate_indices[min_idx].item()
+
+            selected_indices.append(selected_idx)
+            selected_vectors.append(U[selected_idx])
+
+            candidate_indices = candidate_indices[candidate_indices != selected_idx]
+        
+            if len(selected_vectors) < n_selections_per_group and len(candidate_indices) > 0:
+                new_sim = torch.matmul(U[candidate_indices], U[selected_idx].unsqueeze(1)).squeeze(1)
+                max_sim[candidate_indices] = torch.max(max_sim[candidate_indices], new_sim)
+
+        selected_indices_per_group.append(selected_indices)
+
+    return selected_indices_per_group
+    
+def coreset(U, L, num_groups, n_selections_per_group):
     U_groups_indices = lsh_partition(U, num_groups)
     U_groups = [U[indices] if len(indices) > 0 else torch.empty(0, D) for indices in U_groups_indices]
     selected_indices_per_group = greedy_core_set_selection(L, U_groups, n_selections_per_group)

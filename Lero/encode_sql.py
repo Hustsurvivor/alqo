@@ -7,7 +7,7 @@ from sqlparse.sql import Where, Comparison, Identifier, IdentifierList, Token
 from sqlparse.tokens import Keyword, DML, Whitespace
 from sklearn_extra.cluster import KMedoids
 from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
-
+from compute_distance_matrix_accerlaration import compute_distance_matrix_vectorized_gpu 
 
 def normalize_value(value, min_val, max_val):
     """将值归一化到0到1之间"""
@@ -218,82 +218,65 @@ def compute_distance_matrix(encodings, join_list_length, filter_list_length, d_m
     :param encodings: 编码列表，形状为 (N, D)
     :return: 距离矩阵，形状为 (N, N)
     """
-    def compute_distance_batch(encodings, index_pairs, join_list_length, filter_list_length, d_max, w_join, w_filter):
-        """计算一批编码之间的距离"""
-        distances = {}
-        for i, j in index_pairs:
+    N = len(encodings)
+    distance_matrix = np.zeros((N, N))
+    for i in range(N):
+        for j in range(i + 1, N):
             dist = compute_sql_distance(
                 encodings[i], encodings[j],
                 join_list_length, filter_list_length,
                 d_max, w_join, w_filter
             )
-            distances[(i, j)] = dist
-        return distances  # 返回字典，包含距离和对应的索引
-    
-    N = len(encodings)
-    distance_matrix = np.zeros((N, N))
-    batch_size=100
-    index_pairs = [(i, j) for i in range(N) for j in range(i + 1, N)]  # 创建所有需要计算的 (i, j) 对
-
-    with ProcessPoolExecutor(max_workers=8) as executor:
-        futures = {}
-        for start in range(0, len(index_pairs), batch_size):
-            end = min(start + batch_size, len(index_pairs))
-            batch = index_pairs[start:end]
-            futures[executor.submit(compute_distance_batch, encodings, batch, join_list_length, filter_list_length, d_max, w_join, w_filter)] = batch
-
-        # 处理所有结果
-        for future in as_completed(futures):
-            try:
-                distances = future.result()
-                # 处理结果
-                for (i, j), dist in distances.items():
-                    distance_matrix[i, j] = dist
-                    distance_matrix[j, i] = dist  # 对称性
-            except Exception as e:
-                print(f"Task failed: {e}")
-
+            distance_matrix[i, j] = dist
+            distance_matrix[j, i] = dist  # 距离矩阵是对称的
     return distance_matrix
 
-def sql_coreset(subset_sql_queries, range_dict_path):
+def sql_KMedoids(subset_sql_queries, range_dict_path, num_groups = 5):
 
     with open("/home/lgn/source/updatedLearnedQO/active_query_optimizer/data/test/stats_test_sql.txt", 'r') as f:
         lines = f.readlines()
     all_sql_queries = [line.split('#####')[1].strip() for line in lines]
     join_list, filter_list, alias_map = extract_join_and_filter_lists(all_sql_queries)
 
-    # with open(range_dict_path, 'r') as f:
-    #     range_dict = json.load(f)
+    with open(range_dict_path, 'r') as f:
+        range_dict = json.load(f)
     
-    # new_range_dict = {alias_map[k]:v for k, v in range_dict.items()}
+    new_range_dict = {alias_map[k]:v for k, v in range_dict.items()}
 
-    # encodings = []
-    # for sql_query in subset_sql_queries:
-    #     encoding = encode_sql_query(sql_query, alias_map, new_range_dict, join_list, filter_list)
-    #     encodings.append(encoding)
-    #     # print(sql_query)
-    #     # print("编码结果：", encoding[:len(join_list)])
-    #     # print("编码结果：", encoding[len(join_list):])
-    # encodings = np.stack(encodings)
-    # np.save('../data/tmp/stats_test_sql_encodings.npy', encodings)
+    encodings = []
+    for sql_query in subset_sql_queries:
+        encoding = encode_sql_query(sql_query, alias_map, new_range_dict, join_list, filter_list)
+        encodings.append(encoding)
+        # print(sql_query)
+        # print("编码结果：", encoding[:len(join_list)])
+        # print("编码结果：", encoding[len(join_list):])
+    encodings = np.stack(encodings)
+    np.save('../data/tmp/stats_test_sql_encodings.npy', encodings)
 
     encodings = np.load('../data/tmp/stats_test_sql_encodings.npy')
-
-    distance_matrix = compute_distance_matrix(
-        encodings, len(join_list), len(filter_list)
-    )
     
-    num_groups = 5
+    distance_matrix = compute_distance_matrix_vectorized_gpu(
+        encodings, len(join_list), len(filter_list),
+        w_join=0.8, w_filter=0.2
+    )
+
     # 使用 KMedoids 聚类
     kmedoids = KMedoids(n_clusters=num_groups, metric='precomputed', random_state=42)
     labels = kmedoids.fit_predict(distance_matrix)
 
     # 根据标签分组
-    groups = [[] for _ in range(num_groups)]
+    group_indices = [[] for _ in range(num_groups)]
     for idx, label in enumerate(labels):
-        groups[label].append(idx)  # 将样本添加到对应簇的组中
-    for group in groups:
-        print(group)
+        group_indices[label].append(idx)  # 将样本添加到对应簇的组中
+    
+    print('---------------------------')
+    print('finish sql KMedoids:')
+    print('label\tcount')
+    for idx, group in enumerate(group_indices):
+        print(f'{idx}\t{len(group)}')
+    print('---------------------------')
+    
+    return group_indices, encodings
 
 # 示例使用
 if __name__ == "__main__":
